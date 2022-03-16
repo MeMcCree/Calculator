@@ -2,7 +2,7 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
-#include "vector.h"
+#include "vector/vector.h"
 
 typedef enum {
 	F_SIN = 0,
@@ -68,8 +68,6 @@ typedef enum {
 	O_MUL,
 	O_DIV,
 	O_POW,
-	O_BAND,
-	O_BOR,
 	O_LPAR,
 	O_RPAR,
 	O_SIZE
@@ -97,6 +95,8 @@ int get_precedence(oper_t op) {
 		case O_DIV: 	return 3;	break;
 		case O_POW: 	return 4;	break;
 	}
+
+	return 0;
 }
 
 as_t get_associativity(oper_t op) {
@@ -311,7 +311,7 @@ double parse_rpnotation(char inp[]) {
 						num_stck.Push(&num_stck, fact(a));
 					break;
 					case F_ABS:
-						num_stck.Push(&num_stck, abs(a));
+						num_stck.Push(&num_stck, fabs(a));
 					break;
 					case F_LOG:
 						num_stck.Push(&num_stck, log(a));
@@ -355,8 +355,37 @@ int main() {
 	char inp[512];
 
 	while ((fgets(inp, 512, stdin)), strcmp(inp, "quit") != 0) {
-		if (strcmp(inp, "help") == 0) {
-
+		printf("%s\n", inp);
+		if (strcmp(inp, "help\n") == 0) {
+			printf("[HELP]:\n");
+			printf("\tPush number:\n");
+			printf("\t\tExample:\n");
+			printf("\t\t\t10 or 10.0:\n");
+			printf("\tOperators:\n");
+			printf("\t\t+: plus operator\n");
+			printf("\t\t-: minus operator\n");
+			printf("\t\t*: multiplication operator\n");
+			printf("\t\t/: division operator\n");
+			printf("\t\t^: raise to power operator\n");
+			printf("\tFunctions:\n");
+			printf("\t\tFunction usage:\n");
+			printf("\t\t\tsin(3.14 / 6.0)\n");
+			printf("\t\tsin: sine\n");
+			printf("\t\tcos: cosine\n");
+			printf("\t\ttan: tangent\n");
+			printf("\t\tasin: arcsine\n");
+			printf("\t\tacos: arccosine\n");
+			printf("\t\tatan: arctangent\n");
+			printf("\t\tfact: factorial\n");
+			printf("\t\tabs: absolute value\n");
+			printf("\t\tlog: natural logarithm\n");
+			printf("\t\tlog2: binary logarithm\n");
+			printf("\t\tceil: round up number\n");
+			printf("\t\ttrunc: round down number\n");
+			printf("\t\tround: round number\n");
+			printf("\t\tsqrt: squre root\n");
+			printf("\t\trad: degrees to radians\n");
+			printf("\t\tdeg: radians to degrees\n");
 			continue;
 		}
 
