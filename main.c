@@ -2,7 +2,25 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <stdint.h>
+#include <setjmp.h>
 #include "vector/vector.h"
+
+typedef enum {
+	E_NONE = 0,
+	E_MISPAREN,
+	E_UNKNWNFUNC,
+	E_UNKNWNOPER,
+	E_NEARGS,
+	E_NODATONSTCK,
+	E_DIVBYZERO,
+	E_NEGSQRT,
+	E_SIZE
+} err_t;
+
+jmp_buf err_buff;
+err_t err_code;
+char err_addinfo[512];
 
 typedef enum {
 	F_SIN = 0,
@@ -70,6 +88,9 @@ typedef enum {
 	O_POW,
 	O_LPAR,
 	O_RPAR,
+	O_BAND,
+	O_BOR,
+	O_MOD,
 	O_SIZE
 } oper_t;
 
@@ -89,11 +110,14 @@ typedef struct {
 
 int get_precedence(oper_t op) {
 	switch (op) {
-		case O_PLUS: 	return 2;	break;
-		case O_MIN: 	return 2;	break;
-		case O_MUL: 	return 3;	break;
-		case O_DIV: 	return 3;	break;
-		case O_POW: 	return 4;	break;
+		case O_PLUS: 	return 1;	break;
+		case O_MIN: 	return 1;	break;
+		case O_MUL: 	return 4;	break;
+		case O_DIV: 	return 4;	break;
+		case O_POW: 	return 5;	break;
+		case O_BAND:  return 2; break;
+		case O_BOR:   return 3; break;
+		case O_MOD: 	return 4;	break;
 	}
 
 	return 0;
@@ -106,6 +130,9 @@ as_t get_associativity(oper_t op) {
 		case O_MUL: 	return L_ASSOCIATIVE;	break;
 		case O_DIV: 	return L_ASSOCIATIVE;	break;
 		case O_POW: 	return R_ASSOCIATIVE;	break;
+		case O_BAND: 	return L_ASSOCIATIVE;	break;
+		case O_BOR: 	return L_ASSOCIATIVE;	break;
+		case O_MOD: 	return L_ASSOCIATIVE;	break;
 	}
 }
 
@@ -121,7 +148,7 @@ Vec_op_t parse_string(char* expr) {
 		char c = expr[i];
 		if (c == ' ' || c == '\t' || c == '\n') continue;
 
-		if (c >= '0' && c <= '9') {
+		if (c >= '0' && c <= '9' || c == '.') {
 			double num = 0, pow = 1.0;
 			int floating_point = 0;
 			while ((c = expr[i]) && c >= '0' && c <= '9' || c == '.') {
@@ -155,8 +182,10 @@ Vec_op_t parse_string(char* expr) {
 
 			func_t f = lookup_func(buff);
 
-			if (f == F_SIZE) printf("WRONG INPUT!!!\n");
-			else {
+			if (f == F_SIZE) {
+				strcpy(err_addinfo, buff);
+				longjmp(err_buff, E_UNKNWNFUNC);
+			} else {
 				vec.Push(&vec, (op_t){.kind = K_FUNC, .fn_type = f});
 			}
 		} else {
@@ -168,6 +197,10 @@ Vec_op_t parse_string(char* expr) {
 				case '^': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_POW}); 	break;
 				case '(': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_LPAR}); 	break;
 				case ')': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_RPAR}); 	break;
+				case '&': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_BAND}); 	break;
+				case '|': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_BOR}); 	break;
+				case '%': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_MOD}); 	break;
+				default: err_addinfo[0] = c; err_addinfo[1] = '\0'; longjmp(err_buff, E_UNKNWNOPER); break;
 			}
 		}
 	}
@@ -220,8 +253,8 @@ Vec_op_t shunting_yard(char* expr) {
 					break;
 				}
 			}
-			assert(op_stck.size > 0);
-			assert(op_stck.Get(&op_stck, op_stck.size - 1).op_type == O_LPAR);
+			if (op_stck.size < 1) longjmp(err_buff, E_MISPAREN);
+			if (op_stck.Get(&op_stck, op_stck.size - 1).op_type != O_LPAR) longjmp(err_buff, E_MISPAREN);
 			op_stck.size--;
 
 			if (op_stck.size > 0 && (tmp = op_stck.Get(&op_stck, op_stck.size - 1)).kind == K_FUNC) {
@@ -234,7 +267,7 @@ Vec_op_t shunting_yard(char* expr) {
 	op_t tmp;
 	while (op_stck.size > 0) {
 		tmp = op_stck.Get(&op_stck, op_stck.size - 1);
-		assert(tmp.op_type != O_LPAR && tmp.op_type != O_RPAR);
+		if (tmp.op_type == O_LPAR || tmp.op_type == O_RPAR) longjmp(err_buff, E_MISPAREN);
 		op_stck.size--;
 		out.Push(&out, tmp);
 	}
@@ -263,7 +296,8 @@ double parse_rpnotation(char inp[]) {
 		switch (op.kind) {
 			case K_NUM: num_stck.Push(&num_stck, op.data); break;
 			case K_OPER:
-				assert(num_stck.size > 1);
+			{
+				if (num_stck.size < 2) longjmp(err_buff, E_NEARGS);
 				double a = num_stck.Get(&num_stck, num_stck.size - 2), b = num_stck.Get(&num_stck, num_stck.size - 1);
 				num_stck.size -= 2;
 				switch (op.op_type) {
@@ -277,72 +311,87 @@ double parse_rpnotation(char inp[]) {
 						num_stck.Push(&num_stck, a * b);
 					break;
 					case O_DIV:
+						if (b == 0.0) longjmp(err_buff, E_DIVBYZERO);
 						num_stck.Push(&num_stck, a / b);
 					break;
 					case O_POW:
 						num_stck.Push(&num_stck, pow(a, b));
 					break;
+					case O_BAND:
+						num_stck.Push(&num_stck, (uint64_t)a & (uint64_t)b);
+					break;
+					case O_BOR:
+						num_stck.Push(&num_stck, (uint64_t)a | (uint64_t)b);
+					break;
+					case O_MOD:
+						if (b == 0.0) longjmp(err_buff, E_DIVBYZERO);
+						num_stck.Push(&num_stck, (uint64_t)a % (uint64_t)b);
+					break;
 				}
 			break;
+			}
 			case K_FUNC:
-				assert(num_stck.size > 0);
-				a = num_stck.Get(&num_stck, num_stck.size - 1);
+			{
+				if (num_stck.size < 1) longjmp(err_buff, E_NEARGS);
+				double b = num_stck.Get(&num_stck, num_stck.size - 1);
 				num_stck.size -= 1;
 				switch (op.fn_type) {
 					case F_SIN:
-						num_stck.Push(&num_stck, sin(a));
+						num_stck.Push(&num_stck, sin(b));
 					break;
 					case F_COS:
-						num_stck.Push(&num_stck, cos(a));
+						num_stck.Push(&num_stck, cos(b));
 					break;
 					case F_TAN:
-						num_stck.Push(&num_stck, tan(a));
+						num_stck.Push(&num_stck, tan(b));
 					break;
 					case F_ASIN:
-						num_stck.Push(&num_stck, asin(a));
+						num_stck.Push(&num_stck, asin(b));
 					break;
 					case F_ACOS:
-						num_stck.Push(&num_stck, acos(a));
+						num_stck.Push(&num_stck, acos(b));
 					break;
 					case F_ATAN:
-						num_stck.Push(&num_stck, atan(a));
+						num_stck.Push(&num_stck, atan(b));
 					break;
 					case F_FACT:
-						num_stck.Push(&num_stck, fact(a));
+						num_stck.Push(&num_stck, fact(b));
 					break;
 					case F_ABS:
-						num_stck.Push(&num_stck, fabs(a));
+						num_stck.Push(&num_stck, fabs(b));
 					break;
 					case F_LOG:
-						num_stck.Push(&num_stck, log(a));
+						num_stck.Push(&num_stck, log(b));
 					break;
 					case F_LOG2:
-						num_stck.Push(&num_stck, log2(a));
+						num_stck.Push(&num_stck, log2(b));
 					break;
 					case F_CEIL:
-						num_stck.Push(&num_stck, ceil(a));
+						num_stck.Push(&num_stck, ceil(b));
 					break;
 					case F_TRUNC:
-						num_stck.Push(&num_stck, trunc(a));
+						num_stck.Push(&num_stck, trunc(b));
 					break;
 					case F_ROUND:
-						num_stck.Push(&num_stck, round(a));
+						num_stck.Push(&num_stck, round(b));
 					break;
 					case F_SQRT:
-						num_stck.Push(&num_stck, sqrt(a));
+						if (b < 0.0) longjmp(err_buff, E_NEGSQRT);
+						num_stck.Push(&num_stck, sqrt(b));
 					break;
 					case F_RAD:
-						num_stck.Push(&num_stck, a * M_PI / 180.0);
+						num_stck.Push(&num_stck, b * M_PI / 180.0);
 					break;
 					case F_DEG:
-						num_stck.Push(&num_stck, a / M_PI * 180.0);
+						num_stck.Push(&num_stck, b / M_PI * 180.0);
 					break;
 				}
 			break;
+			}
 		}
 	}
 
-	assert(num_stck.size > 0);
+	if (num_stck.size < 1) longjmp(err_buff, E_NODATONSTCK);
 	double res = num_stck.Get(&num_stck, num_stck.size - 1);
 
 	VecFree_op_t(&vec);
@@ -355,7 +404,6 @@ int main() {
 	char inp[512];
 
 	while ((fgets(inp, 512, stdin)), strcmp(inp, "quit") != 0) {
-		printf("%s\n", inp);
 		if (strcmp(inp, "help\n") == 0) {
 			printf("[HELP]:\n");
 			printf("\tPush number:\n");
@@ -389,8 +437,33 @@ int main() {
 			continue;
 		}
 
-		double res = parse_rpnotation(inp);
-		printf("%f\n", res);
+		switch (setjmp(err_buff)) {
+			case E_NONE:
+				double res = parse_rpnotation(inp);
+				printf("%f\n", res);
+			break;
+			case E_MISPAREN:
+				printf("[ERROR]: Mismatched parenthesis\n");
+			break;
+			case E_NEARGS:
+				printf("[ERROR]: Not enough arguments\n");
+			break;
+			case E_UNKNWNFUNC:
+				printf("[ERROR]: Unknown function \"%s\"\n", err_addinfo);
+			break;
+			case E_UNKNWNOPER:
+				printf("[ERROR]: Unknown operator \'%s\'\n", err_addinfo);
+			break;
+			case E_NODATONSTCK:
+				printf("[ERROR]: No data on stack\n");
+			break;
+			case E_DIVBYZERO:
+				printf("[ERROR]: Division by zero\n");
+			break;
+			case E_NEGSQRT:
+				printf("[ERROR]: Negative square root\n");
+			break;
+		}
 	}
 
 
