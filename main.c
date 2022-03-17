@@ -1,10 +1,14 @@
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <math.h>
 #include <stdint.h>
 #include <setjmp.h>
 #include "vector/vector.h"
+
+#define C_RED "\033[31m"
+#define C_GRN "\033[32m"
+#define C_YEL "\033[33m"
+#define C_RES "\033[0m"
 
 typedef enum {
 	E_NONE = 0,
@@ -144,6 +148,8 @@ Vec_op_t parse_string(char* expr) {
 
 	int ln = strlen(expr);
 
+	int negate = 0;
+
 	for (int i = 0; i < ln; i++) {
 		char c = expr[i];
 		if (c == ' ' || c == '\t' || c == '\n') continue;
@@ -168,7 +174,8 @@ Vec_op_t parse_string(char* expr) {
 				i++;
 			} i--;
 
-			vec.Push(&vec, (op_t){.kind = K_NUM, .data = num});
+			vec.Push(&vec, (op_t){.kind = K_NUM, .data = (negate ? -num : num)});
+			negate = 0;
 		} else if (c >= 'a' && c <= 'z') {
 			char buff[256];
 			int sz = 0;
@@ -189,6 +196,11 @@ Vec_op_t parse_string(char* expr) {
 				vec.Push(&vec, (op_t){.kind = K_FUNC, .fn_type = f});
 			}
 		} else {
+			if (c == '-' && i + 1 < ln && (expr[i + 1] >= '0' && expr[i + 1] <= '9' || expr[i + 1] == '.')) {
+				negate = 1;
+				continue;
+			}
+
 			switch (c) {
 				case '+': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_PLUS});  break;
 				case '-': vec.Push(&vec, (op_t){.kind = K_OPER, .op_type = O_MIN}); 	break;
@@ -325,7 +337,7 @@ double parse_rpnotation(char inp[]) {
 					break;
 					case O_MOD:
 						if (b == 0.0) longjmp(err_buff, E_DIVBYZERO);
-						num_stck.Push(&num_stck, (uint64_t)a % (uint64_t)b);
+						num_stck.Push(&num_stck, fmod(a, b));
 					break;
 				}
 			break;
@@ -403,37 +415,42 @@ double parse_rpnotation(char inp[]) {
 int main() {
 	char inp[512];
 
-	while ((fgets(inp, 512, stdin)), strcmp(inp, "quit") != 0) {
+	while (fgets(inp, 512, stdin)) {
+		if (strcmp(inp, "quit") == 0) break;
+
 		if (strcmp(inp, "help\n") == 0) {
-			printf("[HELP]:\n");
-			printf("\tPush number:\n");
+			printf(""C_YEL"[HELP]"C_RES":\n");
+			printf("\t"C_YEL"Push number"C_RES":\n");
 			printf("\t\tExample:\n");
-			printf("\t\t\t10 or 10.0:\n");
-			printf("\tOperators:\n");
-			printf("\t\t+: plus operator\n");
-			printf("\t\t-: minus operator\n");
-			printf("\t\t*: multiplication operator\n");
-			printf("\t\t/: division operator\n");
-			printf("\t\t^: raise to power operator\n");
-			printf("\tFunctions:\n");
+			printf("\t\t\t10 or 10.0 or -10.0:\n");
+			printf("\t"C_YEL"Operators"C_RES":\n");
+			printf("\t\t"C_GRN"+"C_RES": plus operator\n");
+			printf("\t\t"C_GRN"-"C_RES": minus operator\n");
+			printf("\t\t"C_GRN"*"C_RES": multiplication operator\n");
+			printf("\t\t"C_GRN"/"C_RES": division operator\n");
+			printf("\t\t"C_GRN"^"C_RES": raise to power operator\n");
+			printf("\t\t"C_GRN"&"C_RES": Bitwise and\n");
+			printf("\t\t"C_GRN"|"C_RES": Bitwise or\n");
+			printf("\t\t"C_GRN"%"C_RES": Modulus operator\n");
+			printf("\t"C_YEL"Functions"C_RES":\n");
 			printf("\t\tFunction usage:\n");
 			printf("\t\t\tsin(3.14 / 6.0)\n");
-			printf("\t\tsin: sine\n");
-			printf("\t\tcos: cosine\n");
-			printf("\t\ttan: tangent\n");
-			printf("\t\tasin: arcsine\n");
-			printf("\t\tacos: arccosine\n");
-			printf("\t\tatan: arctangent\n");
-			printf("\t\tfact: factorial\n");
-			printf("\t\tabs: absolute value\n");
-			printf("\t\tlog: natural logarithm\n");
-			printf("\t\tlog2: binary logarithm\n");
-			printf("\t\tceil: round up number\n");
-			printf("\t\ttrunc: round down number\n");
-			printf("\t\tround: round number\n");
-			printf("\t\tsqrt: squre root\n");
-			printf("\t\trad: degrees to radians\n");
-			printf("\t\tdeg: radians to degrees\n");
+			printf("\t\t"C_GRN"\"sin\""C_RES": sine\n");
+			printf("\t\t"C_GRN"\"cos\""C_RES": cosine\n");
+			printf("\t\t"C_GRN"\"tan\""C_RES": tangent\n");
+			printf("\t\t"C_GRN"\"asin\""C_RES": arcsine\n");
+			printf("\t\t"C_GRN"\"acos\""C_RES": arccosine\n");
+			printf("\t\t"C_GRN"\"atan\""C_RES": arctangent\n");
+			printf("\t\t"C_GRN"\"fact\""C_RES": factorial\n");
+			printf("\t\t"C_GRN"\"abs\""C_RES": absolute value\n");
+			printf("\t\t"C_GRN"\"log\""C_RES": natural logarithm\n");
+			printf("\t\t"C_GRN"\"log2\""C_RES": binary logarithm\n");
+			printf("\t\t"C_GRN"\"ceil\""C_RES": round up number\n");
+			printf("\t\t"C_GRN"\"trunc\""C_RES": round down number\n");
+			printf("\t\t"C_GRN"\"round\""C_RES": round number\n");
+			printf("\t\t"C_GRN"\"sqrt\""C_RES": squre root\n");
+			printf("\t\t"C_GRN"\"rad\""C_RES": degrees to radians\n");
+			printf("\t\t"C_GRN"\"deg\""C_RES": radians to degrees\n");
 			continue;
 		}
 
@@ -443,25 +460,25 @@ int main() {
 				printf("%f\n", res);
 			break;
 			case E_MISPAREN:
-				printf("[ERROR]: Mismatched parenthesis\n");
+				printf(""C_RED"[ERROR]"C_RES": Mismatched parenthesis\n");
 			break;
 			case E_NEARGS:
-				printf("[ERROR]: Not enough arguments\n");
+				printf(""C_RED"[ERROR]"C_RES": Not enough arguments\n");
 			break;
 			case E_UNKNWNFUNC:
-				printf("[ERROR]: Unknown function \"%s\"\n", err_addinfo);
+				printf(""C_RED"[ERROR]"C_RES": Unknown function "C_GRN"\"%s\""C_RES"\n", err_addinfo);
 			break;
 			case E_UNKNWNOPER:
-				printf("[ERROR]: Unknown operator \'%s\'\n", err_addinfo);
+				printf(""C_RED"[ERROR]"C_RES": Unknown operator "C_YEL"\'%s\'"C_RES"\n", err_addinfo);
 			break;
 			case E_NODATONSTCK:
-				printf("[ERROR]: No data on stack\n");
+				printf(""C_RED"[ERROR]"C_RES": No data on stack\n");
 			break;
 			case E_DIVBYZERO:
-				printf("[ERROR]: Division by zero\n");
+				printf(""C_RED"[ERROR]"C_RES": Division by zero\n");
 			break;
 			case E_NEGSQRT:
-				printf("[ERROR]: Negative square root\n");
+				printf(""C_RED"[ERROR]"C_RES": Negative square root\n");
 			break;
 		}
 	}
@@ -469,4 +486,3 @@ int main() {
 
 	return 0;
 }
-
