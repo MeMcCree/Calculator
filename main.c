@@ -294,9 +294,9 @@ Vec_op_t shunting_yard(char* expr) {
 
 DECLARE_VECTOR(double)
 
-double fact(int a) {
-	if (a < 2) return 1;
-	return a * fact(a - 1);
+double fact(double a) {
+	if (a < 2.0) return 1.0;
+	return a * fact(a - 1.0);
 }
 
 double parse_rpnotation(char inp[]) {
@@ -369,7 +369,7 @@ double parse_rpnotation(char inp[]) {
 						num_stck.Push(&num_stck, atan(b));
 					break;
 					case F_FACT:
-						num_stck.Push(&num_stck, fact(b));
+						num_stck.Push(&num_stck, fact(trunc(b)));
 					break;
 					case F_ABS:
 						num_stck.Push(&num_stck, fabs(b));
@@ -458,9 +458,11 @@ int main() {
 
 		switch (setjmp(err_buff)) {
 			case E_NONE:
+			{
 				double res = parse_rpnotation(inp);
 				printf("%f\n", res);
 			break;
+			}
 			case E_MISPAREN:
 				printf(""C_CUR""C_RED"[ERROR]"C_RES": Mismatched parenthesis\n");
 			break;
