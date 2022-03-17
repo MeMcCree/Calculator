@@ -8,6 +8,8 @@
 #define C_RED "\033[31m"
 #define C_GRN "\033[32m"
 #define C_YEL "\033[33m"
+#define C_CUR "\033[3m"
+#define C_UND "\033[4m"
 #define C_RES "\033[0m"
 
 typedef enum {
@@ -419,20 +421,20 @@ int main() {
 		if (strcmp(inp, "quit") == 0) break;
 
 		if (strcmp(inp, "help\n") == 0) {
-			printf(""C_YEL"[HELP]"C_RES":\n");
-			printf("\t"C_YEL"Push number"C_RES":\n");
+			printf(""C_CUR""C_YEL"[HELP]"C_RES":\n");
+			printf("\t"C_CUR""C_YEL"[Push number]"C_RES":\n");
 			printf("\t\tExample:\n");
 			printf("\t\t\t10 or 10.0 or -10.0:\n");
-			printf("\t"C_YEL"Operators"C_RES":\n");
-			printf("\t\t"C_GRN"+"C_RES": plus operator\n");
-			printf("\t\t"C_GRN"-"C_RES": minus operator\n");
-			printf("\t\t"C_GRN"*"C_RES": multiplication operator\n");
-			printf("\t\t"C_GRN"/"C_RES": division operator\n");
-			printf("\t\t"C_GRN"^"C_RES": raise to power operator\n");
-			printf("\t\t"C_GRN"&"C_RES": Bitwise and\n");
-			printf("\t\t"C_GRN"|"C_RES": Bitwise or\n");
-			printf("\t\t"C_GRN"%"C_RES": Modulus operator\n");
-			printf("\t"C_YEL"Functions"C_RES":\n");
+			printf("\t"C_CUR""C_YEL"[Operators]"C_RES":\n");
+			printf("\t\t"C_GRN"\'+\'"C_RES": plus operator\n");
+			printf("\t\t"C_GRN"\'-\'"C_RES": minus operator\n");
+			printf("\t\t"C_GRN"\'*\'"C_RES": multiplication operator\n");
+			printf("\t\t"C_GRN"\'/\'"C_RES": division operator\n");
+			printf("\t\t"C_GRN"\'^\'"C_RES": raise to power operator\n");
+			printf("\t\t"C_GRN"\'&\'"C_RES": Bitwise and\n");
+			printf("\t\t"C_GRN"\'|\'"C_RES": Bitwise or\n");
+			printf("\t\t"C_GRN"\'%\'"C_RES": Modulus operator\n");
+			printf("\t"C_CUR""C_YEL"[Functions]"C_RES":\n");
 			printf("\t\tFunction usage:\n");
 			printf("\t\t\tsin(3.14 / 6.0)\n");
 			printf("\t\t"C_GRN"\"sin\""C_RES": sine\n");
@@ -460,25 +462,25 @@ int main() {
 				printf("%f\n", res);
 			break;
 			case E_MISPAREN:
-				printf(""C_RED"[ERROR]"C_RES": Mismatched parenthesis\n");
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Mismatched parenthesis\n");
 			break;
 			case E_NEARGS:
-				printf(""C_RED"[ERROR]"C_RES": Not enough arguments\n");
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Not enough arguments\n");
 			break;
 			case E_UNKNWNFUNC:
-				printf(""C_RED"[ERROR]"C_RES": Unknown function "C_GRN"\"%s\""C_RES"\n", err_addinfo);
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Unknown function "C_GRN"\"%s\""C_RES"\n", err_addinfo);
 			break;
 			case E_UNKNWNOPER:
-				printf(""C_RED"[ERROR]"C_RES": Unknown operator "C_YEL"\'%s\'"C_RES"\n", err_addinfo);
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Unknown operator "C_YEL"\'%s\'"C_RES"\n", err_addinfo);
 			break;
 			case E_NODATONSTCK:
-				printf(""C_RED"[ERROR]"C_RES": No data on stack\n");
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": No data on stack\n");
 			break;
 			case E_DIVBYZERO:
-				printf(""C_RED"[ERROR]"C_RES": Division by zero\n");
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Division by zero\n");
 			break;
 			case E_NEGSQRT:
-				printf(""C_RED"[ERROR]"C_RES": Negative square root\n");
+				printf(""C_CUR""C_RED"[ERROR]"C_RES": Negative square root\n");
 			break;
 		}
 	}
